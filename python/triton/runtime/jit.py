@@ -393,14 +393,14 @@ class JITFunction(KernelInterface[T]):
 
         kernel = self.cache[device][key]
         if not warmup:
-            args = [arg.value for arg in args if not arg.param.is_constexpr]
+            args = tuple(arg.value for arg in args if not arg.param.is_constexpr)
             metadata = kernel.metadata
 
             kernel.run(grid_0, grid_1, grid_2, metadata.num_warps,
                        metadata.num_ctas,  # number of warps/ctas per instance
                        metadata.cluster_dims[0], metadata.cluster_dims[1], metadata.cluster_dims[2],  # cluster
                        metadata.shared, stream, kernel.function, CompiledKernel.launch_enter_hook,
-                       CompiledKernel.launch_exit_hook, metadata, *args)
+                       CompiledKernel.launch_exit_hook, metadata, args)
         return kernel
 
     def __init__(self, fn, version=None, do_not_specialize=None, debug=None, noinline=None):
