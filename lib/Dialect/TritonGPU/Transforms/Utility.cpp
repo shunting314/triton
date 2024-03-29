@@ -10,6 +10,7 @@
 #include "triton/Dialect/TritonGPU/Transforms/Utility.h"
 #include "triton/Dialect/TritonNvidiaGPU/IR/Dialect.h"
 #include "llvm/Support/Debug.h"
+#include <iostream>
 
 #include <fstream>
 #define DEBUG_TYPE "ttg-utility"
@@ -114,6 +115,17 @@ unsigned getNumElementsPerThread(Operation *op, SmallVector<unsigned> order,
   unsigned maxContig =
       std::min(valInfo.getContiguity(order[0]), shapePerCTA[order[0]]);
   unsigned alignment = std::min(maxMultiple, maxContig);
+  // if (getenv("HTFIX"))
+  {
+    // std::cerr << "Use HTFIX" << std::endl;
+    Value mask;
+    if (auto loadOp = dyn_cast<triton::LoadOp>(op))
+      mask = loadOp.getMask();
+    else if (auto storeOp = dyn_cast<triton::StoreOp>(op))
+      mask = storeOp.getMask();
+    if (mask)
+      alignment = std::min(alignment, axisInfoAnalysis.getMaskAlignment(mask));
+  }
   unsigned currPerThread = std::min(alignment, 128 / elemNumBits);
   LDBG("elemNumBytes: " << elemNumBytes
                         << ", divisibility: " << maxMultipleBytes
