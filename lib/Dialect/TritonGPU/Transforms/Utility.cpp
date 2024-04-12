@@ -110,6 +110,23 @@ unsigned getNumElementsPerThread(Operation *op, SmallVector<unsigned> order,
   unsigned maxContig =
       std::min(valInfo.getContiguity(order[0]), shapePerCTA[order[0]]);
   unsigned alignment = std::min(maxMultiple, maxContig);
+
+  // BEGIN HONGTAO's FIX
+  Value mask;
+  if (auto loadOp = dyn_cast<triton::LoadOp>(op))
+    mask = loadOp.getMask();
+  else if (auto storeOp = dyn_cast<triton::StoreOp>(op))
+    mask = storeOp.getMask();
+  if (mask)
+    alignment = std::min(alignment, axisInfoAnalysis.getMaskAlignment(mask));
+  if (dyn_cast<triton::LoadOp>(op)) {
+    // Minimal amount of continous elements to saturate memory transaction
+    // bandwith.
+    unsigned minMultiple = std::min(maxMultiple, 4 / elemNumBytes);
+    alignment = std::max(alignment, minMultiple);
+  }
+  // END HONGTAO's FIX 
+
   unsigned currPerThread = std::min(alignment, 128 / elemNumBits);
   return currPerThread;
 }
